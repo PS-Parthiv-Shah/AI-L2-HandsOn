@@ -88,17 +88,8 @@ async def startup():
     session_context["exit_stack"] = exit_stack
     session_context["session"] = session
     
-    # Initialize History with System Prompt + Prefs
-    sys_prompt = SYSTEM
-    if os.path.exists(prefs_path):
-        with open(prefs_path) as f:
-            prefs = json.load(f)
-            if prefs.get("favorite_genre"):
-                sys_prompt += f" User loves {prefs['favorite_genre']} books."
-            if prefs.get("home_city"):
-                sys_prompt += f" User lives in {prefs['home_city']}."
-    
-    session_context["history"] = [{"role": "system", "content": sys_prompt}]
+    # Preferences loading removed for increased flexibility
+    session_context["history"] = [{"role": "system", "content": SYSTEM}]
     print("Web Agent initialized.")
 
 @app.on_event("shutdown")

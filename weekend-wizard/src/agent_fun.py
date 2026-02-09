@@ -88,12 +88,8 @@ async def main():
     if "model_top_p" in prefs:
         MODEL_PARAMS["top_p"] = prefs["model_top_p"]
 
-    # personalized system prompt
+    # Personal context removed to allow for more flexible question answering
     personal_context = ""
-    if prefs.get("favorite_genre"):
-        personal_context += f" User loves {prefs['favorite_genre']} books."
-    if prefs.get("home_city"):
-        personal_context += f" User lives in {prefs['home_city']}."
 
     # server_path is now pre-defined above
     exit_stack = AsyncExitStack()
