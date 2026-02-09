@@ -126,6 +126,9 @@ async def chat_endpoint(req: ChatRequest):
                 
                 if decision.get("action") == "final":
                     answer = decision.get("answer", "")
+                    # Ensure answer is a string
+                    if not isinstance(answer, str):
+                        answer = json.dumps(answer, indent=2)
                     history.append({"role": "assistant", "content": answer})
                     yield f'data: {json.dumps({"reply": answer})}\n\n'
                     return
