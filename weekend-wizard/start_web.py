@@ -21,15 +21,20 @@ def kill_port(port):
 def start_server():
     kill_port(8000)
     print("Starting Web Agent...")
+    
+    # Get the directory of the current script
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    web_agent_path = os.path.join(current_dir, "src", "web_agent.py")
+    
+    # Set PYTHONPATH to include the current directory (for imports within web_agent.py)
+    env = os.environ.copy()
+    env["PYTHONPATH"] = current_dir + os.pathsep + env.get("PYTHONPATH", "")
+    
     # Using sys.executable to ensure same venv
-    cmd = [
-        sys.executable, "-m", "uvicorn", 
-        "src.web_agent:app", 
-        "--host", "127.0.0.1", 
-        "--port", "8000"
-    ]
+    cmd = [sys.executable, web_agent_path]
+    
     try:
-        subprocess.run(cmd)
+        subprocess.run(cmd, cwd=current_dir, env=env)
     except KeyboardInterrupt:
         print("\nStopping server...")
 
