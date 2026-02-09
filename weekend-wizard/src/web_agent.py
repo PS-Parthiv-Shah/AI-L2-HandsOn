@@ -36,10 +36,19 @@ session_context = {"history": [], "session": None, "exit_stack": None}
 
 def clean_json_text(text: str) -> str:
     """Extract JSON from potential markdown code blocks or surrounding text."""
+    # Remove markdown code blocks
     pattern = r"```(?:json)?\s*(.*?)\s*```"
     match = re.search(pattern, text, re.DOTALL)
-    if match: text = match.group(1)
-    return text.strip()
+    if match:
+        text = match.group(1)
+    
+    text = text.strip()
+    # Try to find the outer braces if there's extra text
+    first = text.find("{")
+    last = text.rfind("}")
+    if first != -1 and last != -1:
+        text = text[first : last + 1]
+    return text
 
 def llm_json(messages: List[Dict[str, str]]) -> Dict[str, Any]:
     # Detect paths
@@ -110,26 +119,31 @@ async def chat_endpoint(req: ChatRequest):
         history.append({"role": "user", "content": req.message})
 
         # Agent Loop
-        for _ in range(5):
-            yield f'data: {json.dumps({"status": "Thinking..."})}\n\n'
-            decision = llm_json(history)
-            
-            if decision.get("action") == "final":
-                answer = decision.get("answer", "")
-                history.append({"role": "assistant", "content": answer})
-                yield f'data: {json.dumps({"reply": answer})}\n\n'
-                return
-            
-            tname = decision.get("action")
-            args = decision.get("args", {})
-            
-            if tname in tool_index:
-                yield f'data: {json.dumps({"status": f"Calling tool: {tname}..."})}\n\n'
-                result = await session.call_tool(tname, args)
-                payload = result.content[0].text if result.content else result.model_dump_json()
-                history.append({"role": "assistant", "content": f"[tool:{tname}] {payload}"})
-            else:
-                history.append({"role": "assistant", "content": f"(unknown tool {tname})"})
+        try:
+            for _ in range(5):
+                yield f'data: {json.dumps({"status": "Thinking..."})}\n\n'
+                decision = llm_json(history)
+                
+                if decision.get("action") == "final":
+                    answer = decision.get("answer", "")
+                    history.append({"role": "assistant", "content": answer})
+                    yield f'data: {json.dumps({"reply": answer})}\n\n'
+                    return
+                
+                tname = decision.get("action")
+                args = decision.get("args", {})
+                
+                if tname in tool_index:
+                    yield f'data: {json.dumps({"status": f"Calling tool: {tname}..."})}\n\n'
+                    result = await session.call_tool(tname, args)
+                    payload = result.content[0].text if result.content else result.model_dump_json()
+                    history.append({"role": "assistant", "content": f"[tool:{tname}] {payload}"})
+                else:
+                    history.append({"role": "assistant", "content": f"(unknown tool {tname})"})
+        except Exception as e:
+            yield f'data: {json.dumps({"status": f"Error: {str(e)}"})}\n\n'
+            yield f'data: {json.dumps({"reply": "I encountered an error while processing your request. Check the logs for details."})}\n\n'
+            return
                 
         yield f'data: {json.dumps({"reply": "I got stuck in a loop sorry!"})}\n\n'
 
